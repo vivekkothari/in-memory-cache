@@ -21,19 +21,19 @@ func NewCountingCacheListener[K comparable]() *CountingCacheListener[K] {
 	}
 }
 
-func (l CountingCacheListener[K]) OnHit(key K) {
+func (l *CountingCacheListener[K]) OnHit(key K) {
 	l.hitMap[key]++
 }
 
-func (l CountingCacheListener[K]) OnMiss(key K) {
+func (l *CountingCacheListener[K]) OnMiss(key K) {
 	l.missMap[key]++
 }
 
-func (l CountingCacheListener[K]) OnEvict(key K) {
+func (l *CountingCacheListener[K]) OnEvict(key K) {
 	l.evictMap[key]++
 }
 
-func (l CountingCacheListener[K]) OnExpire(key K) {
+func (l *CountingCacheListener[K]) OnExpire(key K) {
 	l.expireMap[key]++
 }
 
