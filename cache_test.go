@@ -152,3 +152,19 @@ func TestCacheRefreshFromBackingStore(t *testing.T) {
 		t.Errorf("Expected 'valueX' from backing store, got '%s'", value)
 	}
 }
+
+// Test Case 8: Key specific expiration of Cached Items
+func TestKeySpecificCacheExpiration(t *testing.T) {
+	listener := NewCountingCacheListener[string]()
+	cache := newTestCache(2, 5*time.Second, listener)
+
+	cache.Put("key1", "value1", 1*time.Second)
+	time.Sleep(1 * time.Second) // Wait for expiration
+
+	if value := cache.Get("key1"); value != "" {
+		t.Errorf("Expected '', got '%s'", value)
+	}
+	if value := listener.expireMap["key1"]; value != 1 {
+		t.Errorf("Expected '1', got '%d'", value)
+	}
+}
