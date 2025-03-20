@@ -57,13 +57,28 @@ type LRUCache[K comparable, V any] struct {
 }
 
 func NewLRUCache[K comparable, V any](capacity int, defaultTTL time.Duration, backingStore func(K) (V, bool), cacheListener CacheListener[K]) *LRUCache[K, V] {
+	var listener CacheListener[K]
+	if cacheListener == nil {
+		listener = &NoOpCacheListener[K]{}
+	} else {
+		listener = cacheListener
+	}
+	var refillStore func(K) (V, bool)
+	if backingStore == nil {
+		refillStore = func(key K) (V, bool) {
+			var zeroV V
+			return zeroV, false
+		}
+	} else {
+		refillStore = backingStore
+	}
 	return &LRUCache[K, V]{
 		capacity:      capacity,
 		cache:         make(map[K]*list.Element),
 		order:         list.New(),
 		defaultTTL:    defaultTTL,
-		backingStore:  backingStore,
-		cacheListener: cacheListener,
+		backingStore:  refillStore,
+		cacheListener: listener,
 	}
 }
 
@@ -140,11 +155,9 @@ func (c *LRUCache[K, V]) evict() {
 
 func (c *LRUCache[K, V]) fetchFromBackingStore(key K) V {
 	var zeroValue V
-	if c.backingStore != nil {
-		if value, found := c.backingStore(key); found {
-			c.Put(key, value)
-			return value
-		}
+	if value, found := c.backingStore(key); found {
+		c.Put(key, value)
+		return value
 	}
 	return zeroValue
 }

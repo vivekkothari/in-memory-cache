@@ -13,7 +13,7 @@ func main() {
 		return "", false
 	}
 
-	var cache Cache[string, string] = NewLRUCache[string, string](2, 5*time.Second, backingStore, &NoOpCacheListener[string]{})
+	var cache Cache[string, string] = NewLRUCache[string, string](2, 5*time.Second, backingStore, nil)
 
 	cache.Put("key1", "value1")
 	fmt.Println(cache.Get("key1")) // Expected: value1
