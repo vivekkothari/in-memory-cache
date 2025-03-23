@@ -121,8 +121,12 @@ func (c *LRUCache[K, V]) cleanupExpiredEntries() {
 	}
 }
 
+var closeOnce sync.Once
+
 func (c *LRUCache[K, V]) Close() {
-	close(c.stopCleanup)
+	closeOnce.Do(func() {
+		close(c.stopCleanup)
+	})
 }
 
 func (c *LRUCache[K, V]) Put(key K, value V, ttl ...time.Duration) {
