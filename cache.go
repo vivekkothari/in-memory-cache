@@ -111,8 +111,12 @@ func (c *LRUCache[K, V]) cleanupExpiredEntries() {
 	now := time.Now()
 	for key, elem := range c.cache {
 		item := elem.Value.(*CacheItem[K, V])
+		fmt.Println("checking key", key)
 		if now.Sub(item.timestamp) > item.expiry {
-			c.Get(key)
+			fmt.Println("Trying to cleanup", key)
+			c.cacheListener.OnExpire(key)
+			c.order.Remove(elem)
+			delete(c.cache, key)
 		}
 	}
 }

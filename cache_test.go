@@ -172,9 +172,9 @@ func TestKeySpecificCacheExpiration(t *testing.T) {
 // Test Case 8: Key specific expiration of Cached Items
 func TestAutoCleanupByBackgroundThread(t *testing.T) {
 	listener := NewCountingCacheListener[string]()
-	cache := NewLRUCache[string, string](2, 5*time.Second, nil, listener, 1*time.Second)
+	cache := NewLRUCache[string, string](2, 1*time.Second, nil, listener, 1*time.Second)
 	cache.Put("key1", "value1")
-	time.Sleep(5 * time.Second) // Wait for expiration
+	time.Sleep(2 * time.Second) // Wait for expiration
 	if value := listener.expireMap["key1"]; value != 1 {
 		t.Errorf("Expected '1', got '%d'", value)
 	}
