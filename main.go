@@ -13,7 +13,7 @@ func main() {
 		return "", false
 	}
 
-	var cache Cache[string, string] = NewLRUCache[string, string](2, 5*time.Second, backingStore, nil)
+	var cache Cache[string, string] = NewLRUCache[string, string](2, 5*time.Second, backingStore, nil, 5*time.Second)
 
 	cache.Put("key1", "value1")
 	fmt.Println(cache.Get("key1")) // Expected: value1
@@ -23,4 +23,6 @@ func main() {
 	fmt.Println(cache.Get("key1")) // Expected: "" (not found)
 
 	fmt.Println(cache.Get("keyX")) // Expected: valueX (from backing store)
+
+	cache.Close()
 }

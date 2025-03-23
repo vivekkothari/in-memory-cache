@@ -37,6 +37,8 @@ type Cache[K comparable, V any] interface {
 	Put(key K, value V, ttl ...time.Duration)
 	Get(key K) V
 	Remove(key K)
+	//Called when your server stops
+	Close()
 }
 
 type CacheItem[K comparable, V any] struct {
@@ -47,16 +49,18 @@ type CacheItem[K comparable, V any] struct {
 }
 
 type LRUCache[K comparable, V any] struct {
-	capacity      int
-	cache         map[K]*list.Element
-	order         *list.List
-	mutex         sync.RWMutex
-	defaultTTL    time.Duration
-	backingStore  func(K) (V, bool)
-	cacheListener CacheListener[K]
+	capacity        int
+	cache           map[K]*list.Element
+	order           *list.List
+	mutex           sync.RWMutex
+	defaultTTL      time.Duration
+	backingStore    func(K) (V, bool)
+	cacheListener   CacheListener[K]
+	cleanupInterval time.Duration
+	stopCleanup     chan struct{}
 }
 
-func NewLRUCache[K comparable, V any](capacity int, defaultTTL time.Duration, backingStore func(K) (V, bool), cacheListener CacheListener[K]) *LRUCache[K, V] {
+func NewLRUCache[K comparable, V any](capacity int, defaultTTL time.Duration, backingStore func(K) (V, bool), cacheListener CacheListener[K], cleanupInterval time.Duration) *LRUCache[K, V] {
 	var listener CacheListener[K]
 	if cacheListener == nil {
 		listener = &NoOpCacheListener[K]{}
@@ -72,14 +76,49 @@ func NewLRUCache[K comparable, V any](capacity int, defaultTTL time.Duration, ba
 	} else {
 		refillStore = backingStore
 	}
-	return &LRUCache[K, V]{
-		capacity:      capacity,
-		cache:         make(map[K]*list.Element),
-		order:         list.New(),
-		defaultTTL:    defaultTTL,
-		backingStore:  refillStore,
-		cacheListener: listener,
+	cache := &LRUCache[K, V]{
+		capacity:        capacity,
+		cache:           make(map[K]*list.Element),
+		order:           list.New(),
+		defaultTTL:      defaultTTL,
+		backingStore:    refillStore,
+		cacheListener:   listener,
+		cleanupInterval: cleanupInterval,
+		stopCleanup:     make(chan struct{}),
 	}
+	go cache.startCleanup()
+	return cache
+}
+
+func (c *LRUCache[K, V]) startCleanup() {
+	ticker := time.NewTicker(c.cleanupInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			c.cleanupExpiredEntries()
+		case <-c.stopCleanup:
+			return
+		}
+	}
+}
+
+func (c *LRUCache[K, V]) cleanupExpiredEntries() {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	now := time.Now()
+	for key, elem := range c.cache {
+		item := elem.Value.(*CacheItem[K, V])
+		if now.Sub(item.timestamp) > item.expiry {
+			c.Get(key)
+		}
+	}
+}
+
+func (c *LRUCache[K, V]) Close() {
+	close(c.stopCleanup)
 }
 
 func (c *LRUCache[K, V]) Put(key K, value V, ttl ...time.Duration) {
