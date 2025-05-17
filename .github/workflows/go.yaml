@@ -16,13 +16,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup environment (Docker, etc.)
-        shell: bash
-        run: |
-          docker compose down || true
-          docker volume prune -f || true
-          docker compose up -d --wait
-
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
